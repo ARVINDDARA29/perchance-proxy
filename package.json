@@ -1,0 +1,10 @@
+{
+  "name": "perchance-proxy",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^2.6.7",
+    "jsdom": "^24.0.0"
+  }
+}
