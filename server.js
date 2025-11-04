@@ -6,47 +6,63 @@ const app = express();
 
 app.get("/proxy/:gen", async (req, res) => {
   try {
-    const genName = req.params.gen;
-    const targetUrl = `https://perchance.org/${genName}`;
+    const gen = req.params.gen;
+    const targetUrl = `https://perchance.org/${gen}`;
 
-    // Fetch the target page
-    const response = await fetch(targetUrl);
+    const response = await fetch(targetUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+      }
+    });
+
+    if (!response.ok) throw new Error(`Upstream ${response.status}`);
+
     let html = await response.text();
-
-    // Parse the HTML to edit meta headers if needed
     const dom = new JSDOM(html);
     const { document } = dom.window;
 
-    // Optional: inject a small style to fit iframe view
+    // fix relative URLs
+    [...document.querySelectorAll("link, script, img")].forEach((el) => {
+      const attr = el.tagName === "LINK" ? "href" : "src";
+      const val = el.getAttribute(attr);
+      if (val && !val.startsWith("http") && !val.startsWith("//")) {
+        el.setAttribute(attr, `https://perchance.org/${val.replace(/^\//, "")}`);
+      }
+    });
+
+    // inject CSS to fit iframe
     const style = document.createElement("style");
     style.textContent = `
-      body { margin: 0; overflow: auto; }
-      html, body { height: 100%; width: 100%; }
+      html, body { height:100%; width:100%; margin:0; overflow:auto; }
+      iframe, canvas { max-width:100%; }
     `;
     document.head.appendChild(style);
 
-    // Return modified HTML with safe headers
+    // send sanitized HTML
     res.set({
-      "Content-Type": "text/html",
-      "X-Frame-Options": "ALLOWALL",
+      "Content-Type": "text/html; charset=utf-8",
       "Access-Control-Allow-Origin": "*",
-      "Cross-Origin-Resource-Policy": "cross-origin"
+      "X-Frame-Options": "ALLOWALL",
+      "Content-Security-Policy": "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;"
     });
 
     res.send(dom.serialize());
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(`<h1>Proxy Error</h1><p>${error.message}</p>`);
+  } catch (err) {
+    res.status(500).send(`<h1>Error</h1><pre>${err.message}</pre>`);
   }
 });
 
-// Root route (optional)
+// default route
 app.get("/", (req, res) => {
-  res.send(`<h2>✅ Perchance Proxy Running</h2>
-  <p>Use like this:</p>
-  <code>/proxy/bio-dome</code><br>
-  <code>/proxy/ai-character-chat</code>`);
+  res.send(`
+    <h2>✅ Perchance Proxy Running (v2)</h2>
+    <p>Try these URLs:</p>
+    <ul>
+      <li><a href="/proxy/bio-dome">/proxy/bio-dome</a></li>
+      <li><a href="/proxy/ai-character-chat">/proxy/ai-character-chat</a></li>
+    </ul>
+  `);
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log("Server running on port " + PORT));
