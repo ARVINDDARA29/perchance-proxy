@@ -1,7 +1,6 @@
 {
   "name": "perchance-proxy",
   "version": "1.0.0",
-  "type": "commonjs",
   "dependencies": {
     "node-fetch": "^3.3.2"
   }
