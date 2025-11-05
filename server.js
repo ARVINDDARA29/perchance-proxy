@@ -1,30 +1,19 @@
-import express from "express";
-import fetch from "node-fetch";
-import cors from "cors";
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
-const app = express();
-app.use(cors());
-
-app.get("/proxy/*", async (req, res) => {
-  const targetUrl = req.params[0];
-  const perchanceUrl = `https://${targetUrl}`;
+export default async function handler(req, res) {
+  const { id } = req.query;
+  const target = `https://perchance.org/${id}`;
 
   try {
-    const response = await fetch(perchanceUrl);
-    let body = await response.text();
+    const response = await fetch(target);
+    const html = await response.text();
 
     res.setHeader("Content-Type", "text/html");
-    res.removeHeader("X-Frame-Options");
-    res.removeHeader("Content-Security-Policy");
-
-    // Fix relative paths
-    body = body.replace(/src="\//g, 'src="https://');
-    body = body.replace(/href="\//g, 'href="https://');
-
-    res.send(body);
-  } catch (err) {
-    res.status(500).send("Error: " + err.message);
+    res.removeHeader?.("X-Frame-Options");
+    res.removeHeader?.("Content-Security-Policy");
+    res.status(200).send(html);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Proxy error: " + error.message);
   }
-});
-
-app.listen(3000, () => console.log("✅ Proxy active on port 3000"));
+}
